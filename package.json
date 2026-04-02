@@ -1,0 +1,25 @@
+{
+  "name": "MarsCat-APP-Server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MarscatTech/MarsCat-APP-Server"
+  },
+  "private": true,
+  "dependencies": {
+    "@dfinity/agent": "^3.4.3",
+    "@dfinity/identity": "^3.4.3",
+    "@dfinity/identity-secp256k1": "^3.4.3",
+    "@dfinity/principal": "^3.4.3",
+    "fs": "^0.0.1-security",
+    "isomorphic-fetch": "^3.0.0",
+    "path": "^0.12.7",
+    "url": "^0.11.4"
+  }
+}

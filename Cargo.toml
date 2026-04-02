@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "src/app-server"
+]
+resolver = "2"
+
+[profile.release]
+lto = true
+opt-level = 'z'
+
+[workspace.dependencies]
+candid = "0.10"
+ic-cdk = "0.15"
+ic-cdk-macros = "0.17.0"
+serde = "1.0.209"
+serde_json = "1.0.127"
+ic-stable-structures = "0.6.5"
+ciborium = "0.2.2"
+lazy_static = "1.5.0"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"

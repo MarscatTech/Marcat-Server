@@ -1,0 +1,86 @@
+type Announcement = record {
+  url : text;
+  title : text;
+  content : text;
+  timestamp : nat64;
+};
+type AnnouncementWithId = record {
+  id : nat64;
+  url : text;
+  title : text;
+  content : text;
+  timestamp : nat64;
+};
+type AppVersion = record { android_version : text; ios_version : text };
+type HttpRequest = record {
+  url : text;
+  method : text;
+  body : blob;
+  headers : vec record { text; text };
+};
+type HttpResponse = record {
+  body : blob;
+  headers : vec record { text; text };
+  upgrade : opt bool;
+  status_code : nat16;
+};
+type Info = record {
+  about : text;
+  name : text;
+  update_time : nat64;
+  version : text;
+};
+type PaginatedAnnouncements = record {
+  total_announcements : nat64;
+  total_pages : nat64;
+  announcements : vec AnnouncementWithId;
+};
+type Result = variant { Ok; Err : nat64 };
+type Result_1 = variant { Ok : PaginatedAnnouncements; Err : nat64 };
+type Result_2 = variant { Ok : vec text; Err : nat64 };
+type Result_3 = variant { Ok : ReviewVersionResponse; Err : nat64 };
+type Result_4 = variant { Ok : AppVersion; Err : nat64 };
+type Result_5 = variant { Ok : VersionUpdate; Err : nat64 };
+type Result_6 = variant { Ok : opt principal; Err : nat64 };
+type Result_7 = variant { Ok; Err : text };
+type Result_8 = variant { Ok : vec TopDownload; Err : text };
+type ReviewVersionRequest = record {
+  android_version : opt text;
+  ios_version : opt text;
+};
+type ReviewVersionResponse = record {
+  ios_h : nat8;
+  android_h : nat8;
+};
+type TopDownload = record { app_address : text; info : Info };
+type VersionUpdate = record {
+  ios_title : text;
+  release_time : nat64;
+  android_download_url : text;
+  description : text;
+  android_version : text;
+  ios_version : text;
+  force_update : bool;
+  android_title : text;
+  ios_download_url : text;
+};
+service : () -> {
+  add_announcement : (text, nat64, Announcement) -> (Result);
+  announcements : (text, nat64, nat64) -> (Result_1) query;
+  api_key : (text, text) -> (Result_2) query;
+  check_review_version : (ReviewVersionRequest) -> (Result_3) query;
+  get_app_version : () -> (Result_4) query;
+  get_version : () -> (Result_5) query;
+  http_request : (HttpRequest) -> (HttpResponse) query;
+  owner : (text) -> (Result_6) query;
+  remove_announcement : (text, nat64) -> (Result);
+  remove_api_key : (text) -> (Result);
+  set_api_key : (text, vec text) -> (Result);
+  set_app_version : (AppVersion) -> (Result);
+  set_auth_message : (text) -> (Result);
+  set_auth_secret : (text) -> (Result);
+  set_info : (text, text, text, text, nat64, nat64, nat64) -> (Result_7);
+  time_millis : () -> (nat64) query;
+  top_info : (nat64) -> (Result_8) query;
+  update_version : (VersionUpdate) -> (Result);
+}
