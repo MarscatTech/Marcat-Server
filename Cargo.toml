@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "src/app-server"
+    "src/app-server",
+    "src/sticker-server"
 ]
 resolver = "2"
 
@@ -20,3 +21,4 @@ lazy_static = "1.5.0"
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }

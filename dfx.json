@@ -4,6 +4,11 @@
       "candid": "src/app-server/app-server.did",
       "package": "app-server",
       "type": "rust"
+    },
+    "sticker-server": {
+      "candid": "src/sticker-server/sticker-server.did",
+      "package": "sticker-server",
+      "type": "rust"
     }
   },
   "defaults": {
