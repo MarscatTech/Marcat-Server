@@ -15,17 +15,16 @@ const PACK_STICKERS_MEM_ID: MemoryId = MemoryId::new(3);
 const NEXT_PACK_ID_MEM_ID: MemoryId = MemoryId::new(4);
 const NEXT_STICKER_ID_MEM_ID: MemoryId = MemoryId::new(5);
 const ADMINS_MEM_ID: MemoryId = MemoryId::new(6);
-
 thread_local! {
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
         RefCell::new(MemoryManager::init(DefaultMemoryImpl::default()));
 
-    pub static PACKS: RefCell<StableBTreeMap<u64, StickerPack, Memory>> =
+    pub static PACKS: RefCell<StableBTreeMap<u32, StickerPack, Memory>> =
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(PACKS_MEM_ID)),
         ));
 
-    pub static STICKERS: RefCell<StableBTreeMap<u64, Sticker, Memory>> =
+    pub static STICKERS: RefCell<StableBTreeMap<u32, Sticker, Memory>> =
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(STICKERS_MEM_ID)),
         ));
@@ -40,16 +39,16 @@ thread_local! {
             MEMORY_MANAGER.with(|m| m.borrow().get(PACK_STICKERS_MEM_ID)),
         ));
 
-    pub static NEXT_PACK_ID: RefCell<StableCell<u64, Memory>> =
+    pub static NEXT_PACK_ID: RefCell<StableCell<u32, Memory>> =
         RefCell::new(StableCell::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(NEXT_PACK_ID_MEM_ID)),
-            1_u64,
+            1_u32,
         ).unwrap());
 
-    pub static NEXT_STICKER_ID: RefCell<StableCell<u64, Memory>> =
+    pub static NEXT_STICKER_ID: RefCell<StableCell<u32, Memory>> =
         RefCell::new(StableCell::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(NEXT_STICKER_ID_MEM_ID)),
-            1_u64,
+            1_u32,
         ).unwrap());
 
     pub static ADMINS: RefCell<StableBTreeMap<Principal, (), Memory>> =
@@ -58,7 +57,7 @@ thread_local! {
         ));
 }
 
-pub fn next_pack_id() -> u64 {
+pub fn next_pack_id() -> u32 {
     NEXT_PACK_ID.with(|cell| {
         let id = *cell.borrow().get();
         cell.borrow_mut().set(id + 1).unwrap();
@@ -66,7 +65,7 @@ pub fn next_pack_id() -> u64 {
     })
 }
 
-pub fn next_sticker_id() -> u64 {
+pub fn next_sticker_id() -> u32 {
     NEXT_STICKER_ID.with(|cell| {
         let id = *cell.borrow().get();
         cell.borrow_mut().set(id + 1).unwrap();

@@ -5,6 +5,40 @@ use ic_stable_structures::Storable;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct StickerInfo {
+    pub id: u32,
+    pub pack_id: u32,
+    pub name: String,
+    pub storage_type: StorageType,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct PackSummary {
+    pub id: u32,
+    pub name: String,
+    pub description: String,
+    pub cover_sticker_id: Option<u64>,
+    pub creator: Principal,
+    pub created_at: u64,
+    pub updated_at: u64,
+    pub sticker_count: u32,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct PacksPage {
+    pub packs: Vec<PackSummary>,
+    pub total: u32,
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct StickersPage {
+    pub stickers: Vec<StickerInfo>,
+    pub total: u32,
+}
+
 pub const MAX_CHUNK_SIZE: usize = 1_572_864;
 
 pub const MAX_ZIP_SIZE: usize = 10 * 1024 * 1024;
@@ -65,7 +99,7 @@ pub enum UploadStatus {
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct StickerPack {
-    pub id: u64,
+    pub id: u32,
     pub name: String,
     pub description: String,
     pub cover_sticker_id: Option<u64>,
@@ -93,12 +127,14 @@ impl Storable for StickerPack {
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct Sticker {
-    pub id: u64,
-    pub pack_id: u64,
+    pub id: u32,
+    pub pack_id: u32,
     pub name: String,
     pub tags: Vec<String>,
     pub storage_type: StorageType,
     pub upload_status: UploadStatus,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
     pub created_at: u64,
     pub updated_at: u64,
 }
@@ -122,18 +158,18 @@ impl Storable for Sticker {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ChunkKey {
-    pub sticker_id: u64,
+    pub sticker_id: u32,
     pub chunk_index: u32,
 }
 
 impl Storable for ChunkKey {
     const BOUND: Bound = Bound::Bounded {
-        max_size: 12,
+        max_size: 8,
         is_fixed_size: true,
     };
 
     fn to_bytes(&self) -> Cow<[u8]> {
-        let mut buf = Vec::with_capacity(12);
+        let mut buf = Vec::with_capacity(8);
         buf.extend_from_slice(&self.sticker_id.to_be_bytes());
         buf.extend_from_slice(&self.chunk_index.to_be_bytes());
         Cow::Owned(buf)
@@ -141,26 +177,26 @@ impl Storable for ChunkKey {
 
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         let b = bytes.as_ref();
-        let sticker_id = u64::from_be_bytes(b[0..8].try_into().unwrap());
-        let chunk_index = u32::from_be_bytes(b[8..12].try_into().unwrap());
+        let sticker_id = u32::from_be_bytes(b[0..4].try_into().unwrap());
+        let chunk_index = u32::from_be_bytes(b[4..8].try_into().unwrap());
         Self { sticker_id, chunk_index }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PackStickerKey {
-    pub pack_id: u64,
-    pub sticker_id: u64,
+    pub pack_id: u32,
+    pub sticker_id: u32,
 }
 
 impl Storable for PackStickerKey {
     const BOUND: Bound = Bound::Bounded {
-        max_size: 16,
+        max_size: 8,
         is_fixed_size: true,
     };
 
     fn to_bytes(&self) -> Cow<[u8]> {
-        let mut buf = Vec::with_capacity(16);
+        let mut buf = Vec::with_capacity(8);
         buf.extend_from_slice(&self.pack_id.to_be_bytes());
         buf.extend_from_slice(&self.sticker_id.to_be_bytes());
         Cow::Owned(buf)
@@ -168,8 +204,8 @@ impl Storable for PackStickerKey {
 
     fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
         let b = bytes.as_ref();
-        let pack_id = u64::from_be_bytes(b[0..8].try_into().unwrap());
-        let sticker_id = u64::from_be_bytes(b[8..16].try_into().unwrap());
+        let pack_id = u32::from_be_bytes(b[0..4].try_into().unwrap());
+        let sticker_id = u32::from_be_bytes(b[4..8].try_into().unwrap());
         Self { pack_id, sticker_id }
     }
 }
