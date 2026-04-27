@@ -1,0 +1,117 @@
+type Error = variant {
+  NotAdmin;
+  PackNotFound;
+  StickerNotFound;
+  UploadNotPending;
+  ChunkIndexOutOfRange;
+  ChunkAlreadyUploaded;
+  DataTooLarge;
+  UploadIncomplete;
+  InvalidContentType;
+  ZipTooLarge;
+  ZipTooManyImages;
+  ZipNoImagesFound;
+  ZipExtractFailed : record { detail : text };
+};
+
+type StorageType = variant {
+  Binary : record { content_type : text; size : nat64; chunk_count : nat32 };
+  External : record { url : text };
+};
+
+type UploadStatus = variant {
+  Complete;
+  Pending : record { uploaded_chunks : vec nat32 };
+};
+
+type StickerPack = record {
+  id : nat32;
+  name : text;
+  description : text;
+  cover_sticker_id : opt nat64;
+  creator : principal;
+  created_at : nat64;
+  updated_at : nat64;
+};
+
+type Sticker = record {
+  id : nat32;
+  pack_id : nat32;
+  name : text;
+  tags : vec text;
+  storage_type : StorageType;
+  upload_status : UploadStatus;
+  width : opt nat32;
+  height : opt nat32;
+  created_at : nat64;
+  updated_at : nat64;
+};
+
+type StickerInfo = record {
+  id : nat32;
+  pack_id : nat32;
+  name : text;
+  storage_type : StorageType;
+  created_at : nat64;
+  updated_at : nat64;
+};
+
+type PackSummary = record {
+  id : nat32;
+  name : text;
+  description : text;
+  cover_sticker_id : opt nat64;
+  creator : principal;
+  created_at : nat64;
+  updated_at : nat64;
+  sticker_count : nat32;
+};
+
+type PacksPage = record {
+  packs : vec PackSummary;
+  total : nat32;
+};
+
+type StickersPage = record {
+  stickers : vec StickerInfo;
+  total : nat32;
+};
+
+type HttpRequest = record {
+  method : text;
+  url : text;
+  headers : vec record { text; text };
+  body : blob;
+};
+
+type HttpResponse = record {
+  status_code : nat16;
+  headers : vec record { text; text };
+  body : blob;
+};
+
+service : {
+  add_admin : (principal) -> (variant { Ok; Err : Error });
+  remove_admin : (principal) -> (variant { Ok; Err : Error });
+
+  create_pack : (name : text, description : text) -> (variant { Ok : nat32; Err : Error });
+  update_pack : (pack_id : nat32, name : opt text, description : opt text, cover_sticker_id : opt nat64) -> (variant { Ok; Err : Error });
+  delete_pack : (pack_id : nat32) -> (variant { Ok; Err : Error });
+  get_pack : (pack_id : nat32) -> (variant { Ok : StickerPack; Err : Error }) query;
+  list_packs : (offset : nat32, limit : nat32) -> (PacksPage) query;
+
+  create_sticker : (pack_id : nat32, name : text, tags : vec text, storage_type : StorageType, data : opt blob) -> (variant { Ok : nat32; Err : Error });
+  update_sticker : (sticker_id : nat32, name : opt text, tags : opt vec text) -> (variant { Ok; Err : Error });
+  delete_sticker : (sticker_id : nat32) -> (variant { Ok; Err : Error });
+  get_sticker : (sticker_id : nat32) -> (variant { Ok : Sticker; Err : Error }) query;
+  list_stickers : (pack_id : nat32, offset : nat32, limit : nat32) -> (StickersPage) query;
+
+  upload_chunk : (sticker_id : nat32, chunk_index : nat32, data : blob) -> (variant { Ok; Err : Error });
+  finalize_upload : (sticker_id : nat32) -> (variant { Ok; Err : Error });
+  get_chunk : (sticker_id : nat32, chunk_index : nat32) -> (variant { Ok : blob; Err : Error }) query;
+  get_sticker_data : (sticker_id : nat32) -> (variant { Ok : blob; Err : Error }) query;
+
+  upload_zip : (pack_id : nat32, zip_data : blob) -> (variant { Ok : vec nat32; Err : Error });
+
+  http_request : (HttpRequest) -> (HttpResponse) query;
+}
