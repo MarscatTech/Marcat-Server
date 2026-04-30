@@ -14,3 +14,4 @@ ic-stable-structures = { workspace = true }
 serde = { workspace = true }
 ciborium = { workspace = true }
 zip = { workspace = true }
+imagesize = { workspace = true }

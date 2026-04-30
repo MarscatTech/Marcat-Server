@@ -22,3 +22,4 @@ hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+imagesize = "0.13"
