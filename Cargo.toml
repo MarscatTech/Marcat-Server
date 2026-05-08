@@ -1,7 +1,8 @@
 [workspace]
 members = [
     "src/app-server",
-    "src/sticker-server"
+    "src/sticker-server",
+    "src/feed-server"
 ]
 resolver = "2"
 

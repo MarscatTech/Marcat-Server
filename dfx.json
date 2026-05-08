@@ -9,6 +9,11 @@
       "candid": "src/sticker-server/sticker-server.did",
       "package": "sticker-server",
       "type": "rust"
+    },
+    "feed-server": {
+      "candid": "src/feed-server/feed-server.did",
+      "package": "feed-server",
+      "type": "rust"
     }
   },
   "defaults": {
