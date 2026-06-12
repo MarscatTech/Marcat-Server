@@ -1,0 +1,105 @@
+type Comment = record {
+  id : nat64;
+  post_id : nat64;
+  content : text;
+  created_at : nat64;
+  author : principal;
+};
+type CommentsPage = record { total : nat64; comments : vec Comment };
+type CreatePostRequest = record {
+  content : text;
+  images : vec record { text; nat64; nat32 };
+};
+type Error = variant {
+  UserAlreadyExists;
+  ImageIndexOutOfRange;
+  NotRegistered;
+  AlreadyLiked;
+  ChunkIndexOutOfRange;
+  InvalidContentType;
+  ContentTooLong;
+  TooManyImages;
+  NotAdmin;
+  DataTooLarge;
+  NotAuthor;
+  CommentNotFound;
+  PostNotFound;
+  NotLiked;
+  UploadNotPending;
+  ChunkAlreadyUploaded;
+  UploadIncomplete;
+  UserNotFound;
+};
+type HttpRequest = record {
+  url : text;
+  method : text;
+  body : blob;
+  headers : vec record { text; text };
+};
+type HttpResponse = record {
+  body : blob;
+  headers : vec record { text; text };
+  status_code : nat16;
+};
+type Post = record {
+  id : nat64;
+  status : PostStatus;
+  content : text;
+  comment_count : nat64;
+  like_count : nat64;
+  created_at : nat64;
+  author : principal;
+  images : vec PostImage;
+};
+type PostImage = record {
+  height : opt nat32;
+  size : nat64;
+  content_type : text;
+  chunk_count : nat32;
+  width : opt nat32;
+};
+type PostStatus = variant {
+  Published;
+  Pending : record { uploaded_images : vec nat32 };
+};
+type PostSummary = record {
+  id : nat64;
+  content : text;
+  comment_count : nat64;
+  like_count : nat64;
+  image_count : nat32;
+  created_at : nat64;
+  author : principal;
+};
+type PostsPage = record { total : nat64; posts : vec PostSummary };
+type Result = variant { Ok; Err : Error };
+type Result_1 = variant { Ok : nat64; Err : Error };
+type Result_2 = variant { Ok : Post; Err : Error };
+type Result_3 = variant { Ok : UserProfile; Err : Error };
+type UserProfile = record {
+  "principal" : principal;
+  nickname : text;
+  avatar_url : text;
+  created_at : nat64;
+};
+service : () -> {
+  add_admin : (principal) -> (Result);
+  add_comment : (nat64, text) -> (Result_1);
+  create_post : (CreatePostRequest) -> (Result_1);
+  delete_comment : (nat64) -> (Result);
+  delete_post : (nat64) -> (Result);
+  delete_profile : () -> (Result);
+  finalize_post : (nat64) -> (Result);
+  get_post : (nat64) -> (Result_2) query;
+  get_profile : (principal) -> (Result_3) query;
+  http_request : (HttpRequest) -> (HttpResponse) query;
+  is_liked : (nat64) -> (bool) query;
+  like_post : (nat64) -> (Result);
+  list_comments : (nat64, nat64, nat64) -> (CommentsPage) query;
+  list_posts : (nat64, nat64) -> (PostsPage) query;
+  register : (text, text) -> (Result);
+  remove_admin : (principal) -> (Result);
+  unlike_post : (nat64) -> (Result);
+  update_profile : (opt text, opt text) -> (Result);
+  upload_post_image : (nat64, nat32, nat32, blob) -> (Result);
+}
