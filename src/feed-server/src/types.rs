@@ -25,6 +25,9 @@ pub enum Error {
     InvalidContentType,
     ContentTooLong,
     TooManyImages,
+    InvalidReplyTarget,
+    ReplyToReply,
+    CommentPostMismatch,
 }
 
 pub const MAX_CONTENT_LENGTH: usize = 2000;
@@ -32,12 +35,7 @@ pub const MAX_IMAGES_PER_POST: u32 = 9;
 pub const MAX_CHUNK_SIZE: usize = 1_572_864;
 pub const MAX_COMMENT_LENGTH: usize = 500;
 
-pub const ALLOWED_CONTENT_TYPES: &[&str] = &[
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "image/jpeg",
-];
+pub const ALLOWED_CONTENT_TYPES: &[&str] = &["image/png", "image/gif", "image/webp", "image/jpeg"];
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct UserProfile {
@@ -151,7 +149,11 @@ impl Storable for ImageChunkKey {
         let post_id = u64::from_be_bytes(b[0..8].try_into().unwrap());
         let image_index = u32::from_be_bytes(b[8..12].try_into().unwrap());
         let chunk_index = u32::from_be_bytes(b[12..16].try_into().unwrap());
-        Self { post_id, image_index, chunk_index }
+        Self {
+            post_id,
+            image_index,
+            chunk_index,
+        }
     }
 }
 
@@ -192,6 +194,12 @@ pub struct Comment {
     pub author: Principal,
     pub content: String,
     pub created_at: u64,
+    #[serde(default)]
+    pub reply_to_comment_id: Option<u64>,
+    #[serde(default)]
+    pub reply_to_user: Option<Principal>,
+    #[serde(default)]
+    pub reply_count: u64,
 }
 
 impl Storable for Comment {
@@ -234,6 +242,39 @@ impl Storable for PostCommentKey {
         let b = bytes.as_ref();
         let post_id = u64::from_be_bytes(b[0..8].try_into().unwrap());
         let comment_id = u64::from_be_bytes(b[8..16].try_into().unwrap());
-        Self { post_id, comment_id }
+        Self {
+            post_id,
+            comment_id,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CommentReplyKey {
+    pub comment_id: u64,
+    pub reply_id: u64,
+}
+
+impl Storable for CommentReplyKey {
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 16,
+        is_fixed_size: true,
+    };
+
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        let mut buf = Vec::with_capacity(16);
+        buf.extend_from_slice(&self.comment_id.to_be_bytes());
+        buf.extend_from_slice(&self.reply_id.to_be_bytes());
+        Cow::Owned(buf)
+    }
+
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        let b = bytes.as_ref();
+        let comment_id = u64::from_be_bytes(b[0..8].try_into().unwrap());
+        let reply_id = u64::from_be_bytes(b[8..16].try_into().unwrap());
+        Self {
+            comment_id,
+            reply_id,
+        }
     }
 }
