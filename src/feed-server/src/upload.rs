@@ -50,7 +50,11 @@ pub fn upload_image_chunk(
 
     IMAGE_CHUNKS.with(|c| {
         c.borrow_mut().insert(
-            ImageChunkKey { post_id, image_index, chunk_index },
+            ImageChunkKey {
+                post_id,
+                image_index,
+                chunk_index,
+            },
             data,
         );
     });
@@ -78,9 +82,8 @@ pub fn finalize_post_images(post_id: u64) -> Result<(), Error> {
                         image_index: img_idx as u32,
                         chunk_index: ci,
                     };
-                    match chunks.get(&key) {
-                        Some(chunk) => full_data.extend_from_slice(&chunk),
-                        None => {}
+                    if let Some(chunk) = chunks.get(&key) {
+                        full_data.extend_from_slice(&chunk)
                     }
                 }
             });
@@ -116,9 +119,7 @@ pub fn finalize_post_images(post_id: u64) -> Result<(), Error> {
 }
 
 pub fn get_image_data(post_id: u64, image_index: u32) -> Result<(String, Vec<u8>), Error> {
-    let post = POSTS.with(|p| {
-        p.borrow().get(&post_id).ok_or(Error::PostNotFound)
-    })?;
+    let post = POSTS.with(|p| p.borrow().get(&post_id).ok_or(Error::PostNotFound))?;
 
     if image_index as usize >= post.images.len() {
         return Err(Error::ImageIndexOutOfRange);
