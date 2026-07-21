@@ -1,4 +1,6 @@
-use crate::types::{Comment, ImageChunkKey, LikeKey, Post, PostCommentKey, UserProfile};
+use crate::types::{
+    Comment, CommentReplyKey, ImageChunkKey, LikeKey, Post, PostCommentKey, UserProfile,
+};
 use candid::Principal;
 use ic_stable_structures::{
     memory_manager::{MemoryId, MemoryManager, VirtualMemory},
@@ -17,6 +19,7 @@ const POST_COMMENTS_MEM_ID: MemoryId = MemoryId::new(5);
 const NEXT_POST_ID_MEM_ID: MemoryId = MemoryId::new(6);
 const NEXT_COMMENT_ID_MEM_ID: MemoryId = MemoryId::new(7);
 const ADMINS_MEM_ID: MemoryId = MemoryId::new(8);
+const COMMENT_REPLIES_MEM_ID: MemoryId = MemoryId::new(9);
 
 thread_local! {
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
@@ -67,6 +70,11 @@ thread_local! {
     pub static ADMINS: RefCell<StableBTreeMap<Principal, (), Memory>> =
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(ADMINS_MEM_ID)),
+        ));
+
+    pub static COMMENT_REPLIES: RefCell<StableBTreeMap<CommentReplyKey, (), Memory>> =
+        RefCell::new(StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(COMMENT_REPLIES_MEM_ID)),
         ));
 }
 
