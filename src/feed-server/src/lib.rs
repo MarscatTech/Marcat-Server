@@ -301,6 +301,39 @@ fn list_posts(offset: u64, limit: u64) -> PostsPage {
 }
 
 #[query]
+fn list_user_posts(principal: Principal, offset: u64, limit: u64) -> PostsPage {
+    POSTS.with(|p| {
+        let posts_map = p.borrow();
+        let user_posts: Vec<(u64, Post)> = posts_map
+            .iter()
+            .rev()
+            .filter(|(_, post)| {
+                post.author == principal && matches!(post.status, PostStatus::Published)
+            })
+            .collect();
+
+        let total = user_posts.len() as u64;
+
+        let posts = user_posts
+            .into_iter()
+            .skip(offset as usize)
+            .take(limit as usize)
+            .map(|(_, post)| PostSummary {
+                id: post.id,
+                author: post.author,
+                content: post.content.clone(),
+                image_count: post.images.len() as u32,
+                like_count: post.like_count,
+                comment_count: post.comment_count,
+                created_at: post.created_at,
+            })
+            .collect();
+
+        PostsPage { posts, total }
+    })
+}
+
+#[query]
 fn get_post(post_id: u64) -> Result<Post, Error> {
     POSTS.with(|p| p.borrow().get(&post_id).ok_or(Error::PostNotFound))
 }
