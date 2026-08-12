@@ -28,6 +28,9 @@ pub enum Error {
     InvalidReplyTarget,
     ReplyToReply,
     CommentPostMismatch,
+    AlreadyFollowing,
+    NotFollowing,
+    CannotFollowSelf,
 }
 
 pub const MAX_CONTENT_LENGTH: usize = 2000;
@@ -43,6 +46,10 @@ pub struct UserProfile {
     pub nickname: String,
     pub avatar_url: String,
     pub created_at: u64,
+    #[serde(default)]
+    pub following_count: u64,
+    #[serde(default)]
+    pub follower_count: u64,
 }
 
 impl Storable for UserProfile {
@@ -276,5 +283,38 @@ impl Storable for CommentReplyKey {
             comment_id,
             reply_id,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct FollowKey {
+    pub follower: Principal,
+    pub followee: Principal,
+}
+
+impl Storable for FollowKey {
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 58,
+        is_fixed_size: false,
+    };
+
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        let follower_bytes = self.follower.as_slice();
+        let followee_bytes = self.followee.as_slice();
+        let mut buf = Vec::with_capacity(2 + follower_bytes.len() + followee_bytes.len());
+        buf.push(follower_bytes.len() as u8);
+        buf.extend_from_slice(follower_bytes);
+        buf.push(followee_bytes.len() as u8);
+        buf.extend_from_slice(followee_bytes);
+        Cow::Owned(buf)
+    }
+
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        let b = bytes.as_ref();
+        let follower_len = b[0] as usize;
+        let follower = Principal::from_slice(&b[1..1 + follower_len]);
+        let followee_len = b[1 + follower_len] as usize;
+        let followee = Principal::from_slice(&b[2 + follower_len..2 + follower_len + followee_len]);
+        Self { follower, followee }
     }
 }
