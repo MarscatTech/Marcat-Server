@@ -8,9 +8,9 @@ mod upload;
 
 use candid::{CandidType, Principal};
 use serde::Deserialize;
-use storage::{ADMINS, COMMENTS, COMMENT_REPLIES, LIKES, POSTS, POST_COMMENTS, USERS};
+use storage::{ADMINS, COMMENTS, COMMENT_REPLIES, FOLLOWS, LIKES, POSTS, POST_COMMENTS, USERS};
 use types::{
-    Comment, CommentReplyKey, Error, LikeKey, Post, PostCommentKey, PostImage, PostStatus,
+    Comment, CommentReplyKey, Error, FollowKey, LikeKey, Post, PostCommentKey, PostImage, PostStatus,
     PostSummary, PostsPage, UserProfile, MAX_COMMENT_LENGTH, MAX_CONTENT_LENGTH,
     MAX_IMAGES_PER_POST,
 };
@@ -69,6 +69,8 @@ fn register(nickname: String, avatar_url: String) -> Result<(), Error> {
         nickname,
         avatar_url,
         created_at: ic_cdk::api::time(),
+        following_count: 0,
+        follower_count: 0,
     };
 
     USERS.with(|u| {
@@ -410,6 +412,234 @@ fn is_liked(post_id: u64) -> bool {
         user: caller,
     };
     LIKES.with(|l| l.borrow().contains_key(&key))
+}
+
+#[derive(CandidType)]
+struct LikesPage {
+    users: Vec<Principal>,
+    total: u64,
+}
+
+#[query]
+fn list_post_likes(post_id: u64, offset: u64, limit: u64) -> Result<LikesPage, Error> {
+    POSTS.with(|p| {
+        if p.borrow().get(&post_id).is_none() {
+            return Err(Error::PostNotFound);
+        }
+        Ok(())
+    })?;
+
+    LIKES.with(|l| {
+        let likes = l.borrow();
+        let start = LikeKey {
+            post_id,
+            user: Principal::from_slice(&[]),
+        };
+
+        let all_users: Vec<Principal> = likes
+            .range(start..)
+            .take_while(|(k, _)| k.post_id == post_id)
+            .map(|(k, _)| k.user)
+            .collect();
+
+        let total = all_users.len() as u64;
+
+        let users = all_users
+            .into_iter()
+            .skip(offset as usize)
+            .take(limit as usize)
+            .collect();
+
+        Ok(LikesPage { users, total })
+    })
+}
+
+#[update]
+fn follow(user: Principal) -> Result<(), Error> {
+    auth::require_registered()?;
+    let caller = ic_cdk::caller();
+
+    if caller == user {
+        return Err(Error::CannotFollowSelf);
+    }
+
+    USERS.with(|u| {
+        if u.borrow().get(&user).is_none() {
+            return Err(Error::UserNotFound);
+        }
+        Ok(())
+    })?;
+
+    let key = FollowKey {
+        follower: caller,
+        followee: user,
+    };
+
+    FOLLOWS.with(|f| {
+        if f.borrow().contains_key(&key) {
+            return Err(Error::AlreadyFollowing);
+        }
+        f.borrow_mut().insert(key, ());
+        Ok(())
+    })?;
+
+    USERS.with(|u| {
+        let mut users = u.borrow_mut();
+        if let Some(mut follower_profile) = users.get(&caller) {
+            follower_profile.following_count += 1;
+            users.insert(caller, follower_profile);
+        }
+        if let Some(mut followee_profile) = users.get(&user) {
+            followee_profile.follower_count += 1;
+            users.insert(user, followee_profile);
+        }
+    });
+
+    Ok(())
+}
+
+#[update]
+fn unfollow(user: Principal) -> Result<(), Error> {
+    auth::require_registered()?;
+    let caller = ic_cdk::caller();
+
+    let key = FollowKey {
+        follower: caller,
+        followee: user,
+    };
+
+    FOLLOWS.with(|f| {
+        if f.borrow_mut().remove(&key).is_none() {
+            return Err(Error::NotFollowing);
+        }
+        Ok(())
+    })?;
+
+    USERS.with(|u| {
+        let mut users = u.borrow_mut();
+        if let Some(mut follower_profile) = users.get(&caller) {
+            follower_profile.following_count = follower_profile.following_count.saturating_sub(1);
+            users.insert(caller, follower_profile);
+        }
+        if let Some(mut followee_profile) = users.get(&user) {
+            followee_profile.follower_count = followee_profile.follower_count.saturating_sub(1);
+            users.insert(user, followee_profile);
+        }
+    });
+
+    Ok(())
+}
+
+#[query]
+fn is_following(user: Principal) -> bool {
+    let caller = ic_cdk::caller();
+    let key = FollowKey {
+        follower: caller,
+        followee: user,
+    };
+    FOLLOWS.with(|f| f.borrow().contains_key(&key))
+}
+
+#[derive(CandidType)]
+struct FollowsPage {
+    users: Vec<Principal>,
+    total: u64,
+}
+
+#[query]
+fn list_following(user: Principal, offset: u64, limit: u64) -> FollowsPage {
+    FOLLOWS.with(|f| {
+        let follows = f.borrow();
+        let start = FollowKey {
+            follower: user,
+            followee: Principal::from_slice(&[]),
+        };
+
+        let all_users: Vec<Principal> = follows
+            .range(start..)
+            .take_while(|(k, _)| k.follower == user)
+            .map(|(k, _)| k.followee)
+            .collect();
+
+        let total = all_users.len() as u64;
+
+        let users = all_users
+            .into_iter()
+            .skip(offset as usize)
+            .take(limit as usize)
+            .collect();
+
+        FollowsPage { users, total }
+    })
+}
+
+#[query]
+fn list_followers(user: Principal, offset: u64, limit: u64) -> FollowsPage {
+    let all_followers: Vec<Principal> = FOLLOWS.with(|f| {
+        f.borrow()
+            .iter()
+            .filter(|(k, _)| k.followee == user)
+            .map(|(k, _)| k.follower)
+            .collect()
+    });
+
+    let total = all_followers.len() as u64;
+
+    let users = all_followers
+        .into_iter()
+        .skip(offset as usize)
+        .take(limit as usize)
+        .collect();
+
+    FollowsPage { users, total }
+}
+
+#[query]
+fn list_following_posts(offset: u64, limit: u64) -> PostsPage {
+    let caller = ic_cdk::caller();
+
+    let following: Vec<Principal> = FOLLOWS.with(|f| {
+        f.borrow()
+            .range(
+                FollowKey {
+                    follower: caller,
+                    followee: Principal::from_slice(&[]),
+                }..,
+            )
+            .take_while(|(k, _)| k.follower == caller)
+            .map(|(k, _)| k.followee)
+            .collect()
+    });
+
+    POSTS.with(|p| {
+        let posts_map = p.borrow();
+        let feed_posts: Vec<(u64, Post)> = posts_map
+            .iter()
+            .rev()
+            .filter(|(_, post)| {
+                following.contains(&post.author) && matches!(post.status, PostStatus::Published)
+            })
+            .collect();
+
+        let total = feed_posts.len() as u64;
+
+        let posts = feed_posts
+            .into_iter()
+            .skip(offset as usize)
+            .take(limit as usize)
+            .map(|(_, post)| PostSummary {
+                id: post.id,
+                author: post.author,
+                content: post.content.clone(),
+                image_count: post.images.len() as u32,
+                like_count: post.like_count,
+                comment_count: post.comment_count,
+                created_at: post.created_at,
+            })
+            .collect();
+
+        PostsPage { posts, total }
+    })
 }
 
 #[update]
