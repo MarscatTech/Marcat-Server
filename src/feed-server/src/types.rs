@@ -31,6 +31,7 @@ pub enum Error {
     AlreadyFollowing,
     NotFollowing,
     CannotFollowSelf,
+    InvalidConfig,
 }
 
 pub const MAX_CONTENT_LENGTH: usize = 2000;
@@ -94,6 +95,8 @@ pub struct Post {
     pub like_count: u64,
     pub comment_count: u64,
     pub created_at: u64,
+    #[serde(default)]
+    pub hot_score: f64,
 }
 
 impl Storable for Post {
@@ -316,5 +319,39 @@ impl Storable for FollowKey {
         let followee_len = b[1 + follower_len] as usize;
         let followee = Principal::from_slice(&b[2 + follower_len..2 + follower_len + followee_len]);
         Self { follower, followee }
+    }
+}
+
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+pub struct HotConfig {
+    pub like_weight: f64,
+    pub comment_weight: f64,
+    pub decay_constant: f64,
+}
+
+impl Storable for HotConfig {
+    const BOUND: Bound = Bound::Bounded {
+        max_size: 128,
+        is_fixed_size: false,
+    };
+
+    fn to_bytes(&self) -> Cow<'_, [u8]> {
+        let mut buf = vec![];
+        into_writer(self, &mut buf).expect("failed to encode HotConfig");
+        Cow::Owned(buf)
+    }
+
+    fn from_bytes(bytes: Cow<'_, [u8]>) -> Self {
+        from_reader(&bytes[..]).expect("failed to decode HotConfig")
+    }
+}
+
+impl Default for HotConfig {
+    fn default() -> Self {
+        Self {
+            like_weight: 1.0,
+            comment_weight: 3.0,
+            decay_constant: 24.0,
+        }
     }
 }
