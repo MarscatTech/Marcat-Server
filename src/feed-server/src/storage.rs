@@ -1,5 +1,6 @@
 use crate::types::{
-    Comment, CommentReplyKey, FollowKey, ImageChunkKey, LikeKey, Post, PostCommentKey, UserProfile,
+    Comment, CommentReplyKey, FollowKey, HotConfig, ImageChunkKey, LikeKey, Post, PostCommentKey,
+    UserProfile,
 };
 use candid::Principal;
 use ic_stable_structures::{
@@ -21,6 +22,7 @@ const NEXT_COMMENT_ID_MEM_ID: MemoryId = MemoryId::new(7);
 const ADMINS_MEM_ID: MemoryId = MemoryId::new(8);
 const COMMENT_REPLIES_MEM_ID: MemoryId = MemoryId::new(9);
 const FOLLOWS_MEM_ID: MemoryId = MemoryId::new(10);
+const HOT_CONFIG_MEM_ID: MemoryId = MemoryId::new(11);
 
 thread_local! {
     static MEMORY_MANAGER: RefCell<MemoryManager<DefaultMemoryImpl>> =
@@ -82,6 +84,12 @@ thread_local! {
         RefCell::new(StableBTreeMap::init(
             MEMORY_MANAGER.with(|m| m.borrow().get(FOLLOWS_MEM_ID)),
         ));
+
+    pub static HOT_CONFIG: RefCell<StableBTreeMap<u8, HotConfig, Memory>> = RefCell::new(
+        StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(HOT_CONFIG_MEM_ID)),
+        )
+    );
 }
 
 pub fn next_post_id() -> u64 {
